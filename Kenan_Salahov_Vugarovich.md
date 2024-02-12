@@ -1,7 +1,9 @@
 
 1) Компонент `ProfileInfo` выполняет множество задач, включая валидацию, обработку ошибок, генерацию паролей и рендеринг UI. Это может сделать компонент сложным для понимания и тестирования. Для упрощения понимания можно разделить функции на отдельные хуки или утилиты и размещать в отдельных файлах.
 
-2) В коде есть закомментированные строки кода. Если они больше не нужны, их лучше удалить, чтобы код был чище и проще для чтения. Например, если следующий кусок кода больше не нужен, его следует удалить, чтобы не засорять кодовую базу:
+
+
+2) Следующий участок кода не будет работать: 
 
 ```javascript
 {false && isManager && !newUser && (
@@ -48,6 +50,56 @@
 )}
 
 ```
+
+
+ Если он больше не нужty, то его лучше удалить, чтобы код был чище и проще для чтения, но если нужен, то насколько я понимаю для корректной работы нужно просто убрать false:
+
+```javascript
+{isManager && !newUser && (
+  <FormRow>
+    <Checkbox
+      id="sendTrue"
+      checked={!!sendForInspection.needToSend}
+      onChange={() =>
+        setValue(
+          ["sendForInspection", "needToSend"],
+          !sendForInspection.needToSend
+        )
+      }
+    >
+      Передать данные на ТО
+    </Checkbox>
+    <Input
+      id="sendForInspectionEmail"
+      label="Электронная почта"
+      value={sendForInspection.email}
+      onChange={(e) =>
+        setValue(["sendForInspection", "email"], e.target.value)
+      }
+      onBlur={(e) => {
+        validate("inspectionEmail", e.target.value);
+      }}
+    />
+    <Button
+      inline
+      disabled={
+        sendForInspection.sended === "sending" ||
+        internalErrors["inspectionEmail"]
+      }
+      onClick={(e) => {
+        e.preventDefault();
+        sendAgentCard(userInfo.username, sendForInspection.email);
+      }}
+    >
+      {sendForInspection.sended === "success"
+        ? "Отправлено"
+        : "Отправить"}
+    </Button>
+  </FormRow>
+)}
+
+```
+Так что если мы собираемся воспользоваться этим куском кода, то нужно еще обратить внимание на то, что внутри есть пропс canPrecalculation которого нет среди пропсов, это может вызвать ошибку, также вместо props.username можем написать просто username, потому что мы вверху уже проводили дестуктризацию кода.
 Также в коде есть несколько закомментированных строк и неиспользуемых переменных, таких как `surnameSuggestions`, `firstNameSuggestions`, `patronymicSuggestions`, `personInputs`, `paymentInfo`. Если эти переменные и код не нужны, их лучше удалить, чтобы упростить чтение и поддержку кода.
 
 3) Функция `generatePassword` использует `Math.random()`, который не является криптографически безопасным. Я думаю, лучше всё же использовать более безопасный метод генерации случайных чисел. Например, можно использовать `window.crypto.getRandomValues()` следующим образом:
@@ -195,6 +247,7 @@ useEffect(() => {
   showError(internalErrors, errorsServer);
 }, [internalErrors, errorsServer]);
 ```
+*но тут не уверен, так как в документации react написано, что лучше минимизировать использование useEffect, так как иногда это может привести к багам, лучше его использовать только для всяких побочных эффектов, так что в своем коде я всегда пытаюсь действовать как сказано в документации, таким образом я выстраиваю правильную логику работы компонента.
 
 11) Если функции `setValue`, `validate`, `removeError`, `openModal`, `setSubscribe`, `sendAgentCard`, `whatsAppSetNotifications` выполняют асинхронные операции, лучше  их обернуть в `try/catch` блоки для обработки возможных ошибок. Например:
 
@@ -212,4 +265,47 @@ try {
 {username && userInfo && username === userInfo.username && (
  ...
 )}
+```
+
+
+13) В блоке кода <SuggestionsInput>, функция onChange необходимо передать корректный обработчик события. Вместо 
+
+```javascript
+onChange={setValue}
+```
+ должно быть 
+```javascript
+onChange={(value) => setValue(["userInfo", "address"], value)}.
+```
+Исправленный код:
+```javascript
+<SuggestionsInput
+  id="address"
+  placeholder="Регион, город, улица"
+  name="address"
+  size="xl"
+  value={userInfo.address}
+  label="Адрес"
+  list={userInfo.addressList}
+  keyName="text"
+  onBlur={(address) => {
+    validate("addressInProfile", address);
+    removeError("addressInProfile");
+  }}
+  onChange={(value) => setValue(["userInfo", "address"], value)}
+  error={internalErrors.addressInProfile}
+/>
+```
+
+14)Если я не ошибаюсь, то использование библиотеки moment для парсинга дат является устаревшим и может вызвать проблемы с производительностью. Лучше использовать встроенные средства JavaScript, такие как Date, или современные библиотеки, такие как date-fns или dayjs.
+
+15) надо добавить проверку, что errorsServer действительно является массивом перед использованием метода find.
+```javascript
+error={
+  internalErrors.username ||
+  (Array.isArray(errorsServer) &&
+    errorsServer.find((el) =>
+      ["username", "usernameCanonical"].includes(el.key)
+    ))
+}
 ```
