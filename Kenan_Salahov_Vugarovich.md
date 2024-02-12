@@ -309,3 +309,58 @@ error={
     ))
 }
 ```
+16) В коде есть несколько мест, где можно избежать повторения кода, создав общие функции. Вот например:
+
+Можно создать общую функцию для валидации и установки ошибок. Это уменьшит дублирование кода и упростит его чтение и поддержку.
+
+```jsx
+const validateAndSetError = (key, value, additionalParams) => {
+  validate(key, value, additionalParams);
+  if (errorsServer.find((el) => el.key === key)) {
+    internalErrors[key] = errorsServer.find((el) => el.key === key).message;
+  }
+};
+```
+
+Теперь можно использовать эту функцию вместо повторяющегося кода:
+
+```jsx
+<Input
+  id="username"
+  label="Логин"
+  disabled={!permissions.editUsername}
+  autoComplete="off"
+  value={userInfo.username}
+  onChange={(value) => setValue(["userInfo", "username"], value)}
+  onBlur={(value) => {
+    validateAndSetError("username", value);
+  }}
+  error={internalErrors.username}
+/>
+```
+
+ Можно создать общую функцию для проверки и установки значений. Это также уменьшит дублирование кода.
+
+```jsx
+const checkAndSetValue = (key, value, regex) => {
+  if (regex.test(value) || value.length < userInfo[key].length) {
+    return setValue(["userInfo", key], value);
+  }
+};
+```
+
+Теперь можно использовать эту функцию вместо повторяющегося кода:
+
+```jsx
+<Input
+  id="inn"
+  label="ИНН"
+  value={userInfo.inn}
+  onChange={(value) => {
+    checkAndSetValue("inn", value, /^[\d]{0,12}$/);
+  }}
+/>
+```
+
+Эти изменения помогут сделать код более чистым и легким для чтения и поддержки. 
+
